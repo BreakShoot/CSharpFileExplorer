@@ -43,3 +43,9 @@ this.fileExplorer1.SelectionAction += (q, p) =>
 * If you wish to remove/show the ToolTips on file hover, set ShowToolTips to false
 
 ![Example Properties](https://i.imgur.com/HSu3u1s.png)
+
+---
+
+# Pictures
+![Pic1](https://i.imgur.com/1gDIVRK.png)
+![Pic2](https://i.imgur.com/PJqdW1M.png)
