@@ -3,13 +3,13 @@ using System.Runtime.InteropServices;
 
 namespace CSharpFileExplorer
 {
-    class IconLoader
+    internal class IconLoader
     {
         public static Icon GetStockIcon(NativeMethods.SHSTOCKICONID siid)
         {
-            NativeMethods.SHSTOCKICONINFO stockIconInfo = new NativeMethods.SHSTOCKICONINFO();
-            stockIconInfo.cbSize = (uint)Marshal.SizeOf<NativeMethods.SHSTOCKICONINFO>();
-            NativeMethods.SHGetStockIconInfo(siid, (uint)NativeMethods.SHGFI.Icon, ref stockIconInfo);
+            var stockIconInfo = new NativeMethods.SHSTOCKICONINFO();
+            stockIconInfo.cbSize = (uint) Marshal.SizeOf<NativeMethods.SHSTOCKICONINFO>();
+            NativeMethods.SHGetStockIconInfo(siid, (uint) NativeMethods.SHGFI.Icon, ref stockIconInfo);
             var icon = Icon.FromHandle(stockIconInfo.hIcon).ToBitmap(); //convert to bitmap to make it transparent
             icon.MakeTransparent();
             NativeMethods.DestroyIcon(stockIconInfo.hIcon);
@@ -18,8 +18,10 @@ namespace CSharpFileExplorer
 
         public static Icon GetFileTypeIcon(string filetype)
         {
-            NativeMethods.SHFILEINFO iconInfo = new NativeMethods.SHFILEINFO();
-            NativeMethods.SHGetFileInfo(filetype, 256, ref iconInfo, 0, (uint)(NativeMethods.SHGFI.Icon | NativeMethods.SHGFI.SmallIcon | NativeMethods.SHGFI.UseFileAttributes));
+            var iconInfo = new NativeMethods.SHFILEINFO();
+            NativeMethods.SHGetFileInfo(filetype, 256, ref iconInfo, 0,
+                (uint) (NativeMethods.SHGFI.Icon | NativeMethods.SHGFI.SmallIcon |
+                        NativeMethods.SHGFI.UseFileAttributes));
             var icon = Icon.FromHandle(iconInfo.hIcon).ToBitmap();
             icon.MakeTransparent();
             NativeMethods.DestroyIcon(iconInfo.hIcon);
