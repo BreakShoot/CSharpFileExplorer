@@ -49,3 +49,4 @@ this.fileExplorer1.SelectionAction += (q, p) =>
 # Pictures
 ![Pic1](https://i.imgur.com/1gDIVRK.png)
 ![Pic2](https://i.imgur.com/PJqdW1M.png)
+![Pic3](https://i.imgur.com/kSCUgBS.png)
