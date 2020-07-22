@@ -17,9 +17,32 @@ namespace CSharpFileExplorer
         private readonly Timer _toolTimer;
         private readonly ToolTip _toolTip;
         private readonly List<FileSystemWatcher> _watchers;
+        private bool _showToolTips;
         private bool _disposed;
 
-        [ToolboxItem("Show ToolTips")] public bool ShowToolTips { get; set; } = true;
+        [ToolboxItem("Show FileInfo")] public bool ShowFileInfoOnHover
+        {
+            get => _showToolTips;
+
+            set
+            {
+                _showToolTips = value;
+                _toolTimer.Enabled = value;
+
+                if (!value)
+                {
+                    NodeMouseHover -= ScriptTreeView_OnNodeMouseHover;
+                    MouseHover -= ScriptTreeView_MouseHover;
+                    _toolTimer.Elapsed -= Timer_Elapsed;
+                }
+                else
+                {
+                    _toolTimer.Elapsed += Timer_Elapsed;
+                    NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
+                    MouseHover += ScriptTreeView_MouseHover;
+                }
+            }
+        }
 
         [ToolboxItem("Filtering Extensions")] public bool FilteringExtensions { get; set; } = false;
 
@@ -46,11 +69,11 @@ namespace CSharpFileExplorer
             Bookmarks = new List<string>();
             Extensions = new List<string>();
             MouseDown += ScriptTreeView_MouseDown;
-            MouseHover += ScriptTreeView_MouseHover;
 
-            if (ShowToolTips)
+            if (ShowFileInfoOnHover)
             {
                 NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
+                MouseHover += ScriptTreeView_MouseHover;
                 _toolTimer.Elapsed += Timer_Elapsed;
             }
 
