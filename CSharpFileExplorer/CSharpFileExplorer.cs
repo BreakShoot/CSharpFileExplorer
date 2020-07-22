@@ -15,31 +15,37 @@ namespace CSharpFileExplorer
     [ToolboxItem(true)]
     public sealed class FileExplorer : TreeView
     {
+        private readonly Timer _clickTimer;
         private readonly Timer _toolTimer;
         private readonly ToolTip _toolTip;
         private readonly List<FileSystemWatcher> _watchers;
         private bool _disposed;
         private bool _showToolTips;
+        private TreeNodeMouseClickEventArgs _storedClickEventArgs;
+        private Control _storedNodeControl;
 
         public FileExplorer()
         {
+            _clickTimer = new Timer();
             _toolTimer = new Timer();
             _toolTip = new ToolTip();
             _watchers = new List<FileSystemWatcher>();
             Bookmarks = new List<string>();
             Extensions = new List<string>();
-            MouseDown += ScriptTreeView_MouseDown;
+            MouseDown += FileExplorer_MouseDown;
+            NodeMouseDoubleClick += FileExplorer_OnNodeMouseDoubleClick;
 
             if (ShowFileInfoOnHover)
             {
-                NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
-                MouseHover += ScriptTreeView_MouseHover;
+                NodeMouseHover += FileExplorer_OnNodeMouseHover;
+                MouseHover += FileExplorer_MouseHover;
                 _toolTimer.Elapsed += Timer_Elapsed;
             }
 
-            DragDrop += ScriptTreeView_DragDrop;
-            BeforeExpand += ScriptTreeView_BeforeExpand;
-            NodeMouseClick += ScriptTreeView_NodeMouseClick;
+            _clickTimer.Elapsed += clickTimer_Elapsed;
+            DragDrop += FileExplorer_DragDrop;
+            BeforeExpand += FileExplorer_BeforeExpand;
+            NodeMouseClick += FileExplorer_NodeMouseClick;
 
             AfterCollapse += (q, e) =>
             {
@@ -70,15 +76,15 @@ namespace CSharpFileExplorer
 
                 if (!value)
                 {
-                    NodeMouseHover -= ScriptTreeView_OnNodeMouseHover;
-                    MouseHover -= ScriptTreeView_MouseHover;
+                    NodeMouseHover -= FileExplorer_OnNodeMouseHover;
+                    MouseHover -= FileExplorer_MouseHover;
                     _toolTimer.Elapsed -= Timer_Elapsed;
                 }
                 else
                 {
                     _toolTimer.Elapsed += Timer_Elapsed;
-                    NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
-                    MouseHover += ScriptTreeView_MouseHover;
+                    NodeMouseHover += FileExplorer_OnNodeMouseHover;
+                    MouseHover += FileExplorer_MouseHover;
                 }
             }
         }
@@ -100,7 +106,47 @@ namespace CSharpFileExplorer
 
         public ContextMenuStrip TreeContextMenuStrip { get; set; }
 
-        private void ScriptTreeView_MouseHover(object sender, EventArgs e)
+        private void clickTimer_Elapsed(object sender, ElapsedEventArgs e)
+        {
+            _clickTimer.Stop();
+
+
+            Invoke(new MethodInvoker(delegate
+            {
+                if (_showToolTips)
+                {
+                    _toolTip.Hide(this);
+                    _toolTimer.Stop();
+                    _toolTimer.Start();
+                    _toolTimer.Interval = 3500;
+                }
+
+
+                SelectedNode = _storedClickEventArgs.Node;
+
+                if ((_storedClickEventArgs.Button & MouseButtons.Right) != 0)
+                    NodeContextMenuStrip.Show(
+                        _storedNodeControl.PointToScreen(new Point(_storedClickEventArgs.X, _storedClickEventArgs.Y)));
+                else if ((_storedClickEventArgs.Button & MouseButtons.Left) != 0)
+                    SelectionAction(_storedNodeControl, _storedClickEventArgs);
+            }));
+        }
+
+        private void FileExplorer_OnNodeMouseDoubleClick(object sender, MouseEventArgs e)
+        {
+            _clickTimer.Stop();
+
+            try
+            {
+                Process.Start(_storedClickEventArgs.Node.Name);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Failed to open file!", "ERROR");
+            }
+        }
+
+        private void FileExplorer_MouseHover(object sender, EventArgs e)
         {
             _toolTip.Hide(this);
             _toolTimer.Stop();
@@ -110,8 +156,6 @@ namespace CSharpFileExplorer
 
         private void Timer_Elapsed(object sender, ElapsedEventArgs e)
         {
-            _toolTimer.Stop();
-
             Invoke(new MethodInvoker(delegate
             {
                 var mousePos = PointToClient(MousePosition);
@@ -181,12 +225,12 @@ namespace CSharpFileExplorer
             }));
         }
 
-        private void ScriptTreeView_OnNodeMouseHover(object sender, TreeNodeMouseHoverEventArgs e)
+        private void FileExplorer_OnNodeMouseHover(object sender, TreeNodeMouseHoverEventArgs e)
         {
             _toolTip.Hide(this);
             _toolTimer.Stop();
             _toolTimer.Start();
-            _toolTimer.Interval = 2000;
+            _toolTimer.Interval = 3500;
         }
 
         public string ReadSelectedNode()
@@ -210,12 +254,15 @@ namespace CSharpFileExplorer
             BuildFileWatcher(inputFolder);
         }
 
-        private void ScriptTreeView_BeforeExpand(object sender, TreeViewCancelEventArgs e)
+        private void FileExplorer_BeforeExpand(object sender, TreeViewCancelEventArgs e)
         {
-            _toolTip.Hide(this);
-            _toolTimer.Stop();
-            _toolTimer.Start();
-            _toolTimer.Interval = 3500;
+            if (_showToolTips)
+            {
+                _toolTip.Hide(this);
+                _toolTimer.Stop();
+                _toolTimer.Start();
+                _toolTimer.Interval = 3500;
+            }
 
             RemoveDecoyNode(e.Node);
             var fileArray = Directory.GetFiles(e.Node.Name);
@@ -322,7 +369,7 @@ namespace CSharpFileExplorer
             return node;
         }
 
-        private void ScriptTreeView_DragDrop(object sender, DragEventArgs e)
+        private void FileExplorer_DragDrop(object sender, DragEventArgs e)
         {
             var targetPoint = PointToClient(new Point(e.X, e.Y));
             var targetNode = GetNodeAt(targetPoint);
@@ -438,9 +485,9 @@ namespace CSharpFileExplorer
                     else
                         node = SelectedNode.Nodes.Add("stub");
 
-                    BeforeExpand -= ScriptTreeView_BeforeExpand;
+                    BeforeExpand -= FileExplorer_BeforeExpand;
                     SelectedNode.Expand();
-                    BeforeExpand += ScriptTreeView_BeforeExpand;
+                    BeforeExpand += FileExplorer_BeforeExpand;
                     var box = new TextBox();
                     box.Size = new Size(100, 5);
                     box.Location = new Point(node.Bounds.X + 2, node.Bounds.Y - 2);
@@ -468,7 +515,7 @@ namespace CSharpFileExplorer
             {
                 if (IsDirectory(SelectedNode.Name))
                 {
-                    BeforeExpand -= ScriptTreeView_BeforeExpand;
+                    BeforeExpand -= FileExplorer_BeforeExpand;
                     TreeNode node = null;
 
                     if (SelectedNode.Nodes.Count == 1)
@@ -477,7 +524,7 @@ namespace CSharpFileExplorer
                         node = SelectedNode.Nodes.Add("stub");
 
                     SelectedNode.Expand();
-                    BeforeExpand += ScriptTreeView_BeforeExpand;
+                    BeforeExpand += FileExplorer_BeforeExpand;
                     var box = new TextBox();
                     box.Size = new Size(100, 5);
                     box.Location = new Point(node.Bounds.X + 2, node.Bounds.Y - 2);
@@ -549,20 +596,19 @@ namespace CSharpFileExplorer
             NodeContextMenuStrip.Items.Add("Properties").Click += (q, e) => { ShowFileProperties(SelectedNode.Name); };
         }
 
-        private void ScriptTreeView_MouseDown(object sender, MouseEventArgs e)
+        private void FileExplorer_MouseDown(object sender, MouseEventArgs e)
         {
             if ((e.Button & MouseButtons.Right) != 0)
                 if (SelectedNode == null || GetNodeAt(e.X, e.Y) == null)
                     TreeContextMenuStrip.Show(((Control) sender).PointToScreen(new Point(e.X, e.Y)));
         }
 
-        private void ScriptTreeView_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
+        private void FileExplorer_NodeMouseClick(object sender, TreeNodeMouseClickEventArgs e)
         {
-            SelectedNode = e.Node;
-
-            if ((e.Button & MouseButtons.Right) != 0)
-                NodeContextMenuStrip.Show(((Control) sender).PointToScreen(new Point(e.X, e.Y)));
-            else if ((e.Button & MouseButtons.Left) != 0) SelectionAction(sender, e);
+            _storedNodeControl = (Control) sender;
+            _storedClickEventArgs = e;
+            _clickTimer.Start();
+            _clickTimer.Interval = 300;
         }
 
         public static bool ShowFileProperties(string fileName)
