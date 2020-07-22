@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Timers;
 using System.Windows.Forms;
 using Timer = System.Timers.Timer;
@@ -17,10 +18,48 @@ namespace CSharpFileExplorer
         private readonly Timer _toolTimer;
         private readonly ToolTip _toolTip;
         private readonly List<FileSystemWatcher> _watchers;
-        private bool _showToolTips;
         private bool _disposed;
+        private bool _showToolTips;
 
-        [ToolboxItem("Show FileInfo")] public bool ShowFileInfoOnHover
+        public FileExplorer()
+        {
+            _toolTimer = new Timer();
+            _toolTip = new ToolTip();
+            _watchers = new List<FileSystemWatcher>();
+            Bookmarks = new List<string>();
+            Extensions = new List<string>();
+            MouseDown += ScriptTreeView_MouseDown;
+
+            if (ShowFileInfoOnHover)
+            {
+                NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
+                MouseHover += ScriptTreeView_MouseHover;
+                _toolTimer.Elapsed += Timer_Elapsed;
+            }
+
+            DragDrop += ScriptTreeView_DragDrop;
+            BeforeExpand += ScriptTreeView_BeforeExpand;
+            NodeMouseClick += ScriptTreeView_NodeMouseClick;
+
+            AfterCollapse += (q, e) =>
+            {
+                e.Node.ImageKey = "folder_closed";
+                e.Node.SelectedImageKey = "folder_closed";
+                e.Node.Nodes.Clear();
+                AddDecoyNode(e.Node);
+            };
+
+            DragEnter += (q, e) => e.Effect = DragDropEffects.Move;
+            ItemDrag += (q, e) => DoDragDrop(e.Item, DragDropEffects.Move);
+            BuildContextMenuSettings();
+            LoadIcons();
+            NativeMethods.SetWindowTheme(Handle, "explorer", null);
+
+            AllowDrop = true;
+        }
+
+        [ToolboxItem("Show FileInfo")]
+        public bool ShowFileInfoOnHover
         {
             get => _showToolTips;
 
@@ -60,43 +99,6 @@ namespace CSharpFileExplorer
         public ContextMenuStrip NodeContextMenuStrip { get; set; }
 
         public ContextMenuStrip TreeContextMenuStrip { get; set; }
-
-        public FileExplorer()
-        {
-            _toolTimer = new Timer();
-            _toolTip = new ToolTip();
-            _watchers = new List<FileSystemWatcher>();
-            Bookmarks = new List<string>();
-            Extensions = new List<string>();
-            MouseDown += ScriptTreeView_MouseDown;
-
-            if (ShowFileInfoOnHover)
-            {
-                NodeMouseHover += ScriptTreeView_OnNodeMouseHover;
-                MouseHover += ScriptTreeView_MouseHover;
-                _toolTimer.Elapsed += Timer_Elapsed;
-            }
-
-            DragDrop += ScriptTreeView_DragDrop;
-            BeforeExpand += ScriptTreeView_BeforeExpand;
-            NodeMouseClick += ScriptTreeView_NodeMouseClick;
-
-            AfterCollapse += (q, e) =>
-            {
-                e.Node.ImageKey = "folder_closed";
-                e.Node.SelectedImageKey = "folder_closed";
-                e.Node.Nodes.Clear();
-                AddDecoyNode(e.Node);
-            };
-
-            DragEnter += (q, e) => e.Effect = DragDropEffects.Move;
-            ItemDrag += (q, e) => DoDragDrop(e.Item, DragDropEffects.Move);
-            BuildContextMenuSettings();
-            LoadIcons();
-            NativeMethods.SetWindowTheme(Handle, "explorer", null);
-
-            AllowDrop = true;
-        }
 
         private void ScriptTreeView_MouseHover(object sender, EventArgs e)
         {
@@ -543,6 +545,8 @@ namespace CSharpFileExplorer
             };
 
             NodeContextMenuStrip.Items.Add("Remove").Click += (q, e) => { SelectedNode.Remove(); };
+
+            NodeContextMenuStrip.Items.Add("Properties").Click += (q, e) => { ShowFileProperties(SelectedNode.Name); };
         }
 
         private void ScriptTreeView_MouseDown(object sender, MouseEventArgs e)
@@ -559,6 +563,17 @@ namespace CSharpFileExplorer
             if ((e.Button & MouseButtons.Right) != 0)
                 NodeContextMenuStrip.Show(((Control) sender).PointToScreen(new Point(e.X, e.Y)));
             else if ((e.Button & MouseButtons.Left) != 0) SelectionAction(sender, e);
+        }
+
+        public static bool ShowFileProperties(string fileName)
+        {
+            var info = new NativeMethods.SHELLEXECUTEINFO();
+            info.cbSize = Marshal.SizeOf(info);
+            info.lpVerb = "properties";
+            info.lpFile = fileName;
+            info.nShow = 5; //SW_SHOW
+            info.fMask = 12; //SEE_MASK_INVOKEIDLIST
+            return NativeMethods.ShellExecuteEx(ref info);
         }
 
         private void LoadIcons()
