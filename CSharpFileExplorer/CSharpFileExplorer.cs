@@ -32,9 +32,12 @@ namespace CSharpFileExplorer
             _watchers = new List<FileSystemWatcher>();
             Bookmarks = new List<string>();
             Extensions = new List<string>();
+            NativeMethods.SetWindowTheme(Handle, "explorer", null);
+            BuildContextMenuSettings();
+            LoadIcons();
+            AllowDrop = true;
             MouseDown += FileExplorer_MouseDown;
             NodeMouseDoubleClick += FileExplorer_OnNodeMouseDoubleClick;
-
             if (ShowFileInfoOnHover)
             {
                 NodeMouseHover += FileExplorer_OnNodeMouseHover;
@@ -46,22 +49,9 @@ namespace CSharpFileExplorer
             DragDrop += FileExplorer_DragDrop;
             BeforeExpand += FileExplorer_BeforeExpand;
             NodeMouseClick += FileExplorer_NodeMouseClick;
-
-            AfterCollapse += (q, e) =>
-            {
-                e.Node.ImageKey = "folder_closed";
-                e.Node.SelectedImageKey = "folder_closed";
-                e.Node.Nodes.Clear();
-                AddDecoyNode(e.Node);
-            };
-
-            DragEnter += (q, e) => e.Effect = DragDropEffects.Move;
-            ItemDrag += (q, e) => DoDragDrop(e.Item, DragDropEffects.Move);
-            BuildContextMenuSettings();
-            LoadIcons();
-            NativeMethods.SetWindowTheme(Handle, "explorer", null);
-
-            AllowDrop = true;
+            AfterCollapse += FileExplorer_AfterCollapse;
+            DragEnter += FileExplorer_DragEnter;
+            ItemDrag += FileExplorer_ItemDrag;
         }
 
         [ToolboxItem("Show FileInfo")]
@@ -105,6 +95,24 @@ namespace CSharpFileExplorer
         public ContextMenuStrip NodeContextMenuStrip { get; set; }
 
         public ContextMenuStrip TreeContextMenuStrip { get; set; }
+
+        private void FileExplorer_ItemDrag(object sender, ItemDragEventArgs e)
+        {
+            DoDragDrop(e.Item, DragDropEffects.Move);
+        }
+
+        private void FileExplorer_DragEnter(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+        }
+
+        private void FileExplorer_AfterCollapse(object sender, TreeViewEventArgs e)
+        {
+            e.Node.ImageKey = "folder_closed";
+            e.Node.SelectedImageKey = "folder_closed";
+            e.Node.Nodes.Clear();
+            AddDecoyNode(e.Node);
+        }
 
         private void clickTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
