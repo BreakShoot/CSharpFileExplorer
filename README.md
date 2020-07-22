@@ -40,12 +40,22 @@ this.fileExplorer1.SelectionAction += (q, p) =>
 # Options
 * Utilize the BookMarkColor property to set the color for bookmarks
 * If you wish to only witness files of a certain extension, add to the Extensions list, and set FilteringExtensions to true
-* If you wish to remove/show the ToolTips on file hover, set ShowToolTips to false
+* If you wish to remove/show the file information on file hover, set ShowFileInfoOnHover
+* Drag and drop files/folders to move them
+* Create new folders/files
+* Delete folders/files
+* Show file/folder properties
 
-![Example Properties](https://i.imgur.com/HSu3u1s.png)
+![Example Properties](https://i.imgur.com/vh3lMRa.png)
 
 ---
 
 # Pictures
 ![Pic1](https://i.imgur.com/1gDIVRK.png)
 ![Pic2](https://i.imgur.com/PJqdW1M.png)
+![Pic3](https://i.imgur.com/kSCUgBS.png)
+
+---
+
+# How to Use?
+Utilize the PopulateView(string folderPath) method to fill the listBox, this is automatically utilized when you right click and select "Add Directory." 
