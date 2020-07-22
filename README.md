@@ -42,7 +42,7 @@ this.fileExplorer1.SelectionAction += (q, p) =>
 * If you wish to only witness files of a certain extension, add to the Extensions list, and set FilteringExtensions to true
 * If you wish to remove/show the file information on file hover, set ShowFileInfoOnHover
 
-![Example Properties](https://i.imgur.com/HSu3u1s.png)
+![Example Properties](https://i.imgur.com/vh3lMRa.png)
 
 ---
 
